@@ -10,6 +10,5 @@ packet-schedule/
 │   ├── Event.cpp
 │   ├── Packet.cpp
 │   ├── Router.cpp
-│   ├── main.cpp
-├── CMakeLists.txt (optional, for build automation with CMake)
+├── packet-schedule.cpp // Main() function
 ```
