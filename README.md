@@ -1,6 +1,7 @@
 Project structure:
 
-packet-routing-simulation/
+```
+packet-schedule/
 ├── include/
 │   ├── Event.h
 │   ├── Packet.h
@@ -11,3 +12,4 @@ packet-routing-simulation/
 │   ├── Router.cpp
 │   ├── main.cpp
 ├── CMakeLists.txt (optional, for build automation with CMake)
+```
