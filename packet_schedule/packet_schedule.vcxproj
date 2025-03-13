@@ -160,9 +160,12 @@
     <ClCompile Include="src\Router.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Event.h" />
-    <ClInclude Include="include\Packet.h" />
-    <ClInclude Include="include\Router.h" />
+    <ClInclude Include="include\Event.hpp" />
+    <ClInclude Include="include\Packet.hpp" />
+    <ClInclude Include="include\Router.hpp" />
+    <ClInclude Include="service\FIFOQueue.hpp" />
+    <ClInclude Include="service\IQueue.hpp" />
+    <ClInclude Include="service\SPQueue.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
