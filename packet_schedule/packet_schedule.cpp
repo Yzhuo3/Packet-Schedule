@@ -16,7 +16,7 @@ using namespace std;
 double currentTime = 0.0;
 
 // Event queue (Min-Heap based on event time)
-priority_queue<Event, vector<Event>, greater<>> eventQueue;
+priority_queue<Event, vector<Event>, greater<Event>> eventQueue;
 
 // Random number generator for ON/OFF traffic modeling
 random_device rd;
@@ -24,7 +24,7 @@ mt19937 gen(rd());
 uniform_real_distribution<> arrivalDist(0.1, 1.0);  // Packet arrival time distribution
 
 // Simulation parameters
-const double SIMULATION_TIME = 10.0;  // Total time for the simulation
+const double SIMULATION_TIME = 10.0;  // Total simulation time
 const double TRANSMISSION_RATE = 10e6; // 10 Mbps transmission capacity
 const int NUM_NODES = 5;
 const size_t QUEUE_CAPACITY = 100;
@@ -33,8 +33,8 @@ const size_t QUEUE_CAPACITY = 100;
 vector<shared_ptr<Router>> routers;
 
 // Function to schedule an event in the simulation
-void scheduleEvent(double time, EventType type, const function<void()>& handler) {
-    eventQueue.push(Event(time, type, handler));
+void scheduleEvent(double time, EventType type, function<void()> handler) {
+    eventQueue.push(Event(time, type, move(handler)));
 }
 
 // Function to handle packet arrivals
@@ -53,7 +53,7 @@ void handlePacketArrival(shared_ptr<Router> router, Packet packet) {
         });
     }
 
-    // Schedule the processing of the packet at the router
+    // Schedule packet processing at the router
     scheduleEvent(currentTime + 0.01, EventType::PACKET_DEPARTURE, [router]() {
         router->processPacket(scheduleEvent, currentTime);
     });

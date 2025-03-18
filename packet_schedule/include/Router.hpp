@@ -52,7 +52,7 @@ public:
     }
 
     // Process the next packet in the highest-priority queue available
-    void Router::processPacket(std::function<void(double, EventType, std::function<void()>)> scheduleEvent, double currentTime) {
+    void processPacket(std::function<void(double, EventType, std::function<void()>)> scheduleEvent, double currentTime) {
         if (!premiumQueue.empty()) {
             Packet p = premiumQueue.front();
             premiumQueue.pop();

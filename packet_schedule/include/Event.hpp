@@ -1,7 +1,6 @@
 #ifndef EVENT_HPP
 #define EVENT_HPP
 
-#include <iostream>
 #include <functional>
 
 enum class EventType {
@@ -9,30 +8,25 @@ enum class EventType {
     PACKET_DEPARTURE
 };
 
-/**
- * \brief packet arrivals and departures.
- */
 class Event {
 public:
-    double time;       // Event timestamp
-    EventType type;    // Event type (arrival or departure)
-    
-    // Function pointer to handle the event
-    std::function<void()> eventHandler;  
+    double time; // Event execution time
+    EventType type;
+    std::function<void()> eventHandler;
 
     Event(double eventTime, EventType eventType, std::function<void()> handler)
         : time(eventTime), type(eventType), eventHandler(handler) {}
 
-    // Execute the event action
-    void execute() {
+    // Execute the event
+    void execute() const {
         if (eventHandler) {
             eventHandler();
         }
     }
 
-    // Comparator for event priority queue (earlier time has higher priority)
-    bool operator<(const Event& other) const {
-        return time > other.time;
+    // Comparator for priority queue (Min-Heap: smaller time executes first)
+    bool operator>(const Event& other) const {
+        return time > other.time; // Higher time means lower priority
     }
 };
 

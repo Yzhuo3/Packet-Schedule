@@ -155,9 +155,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="packet_schedule.cpp" />
-    <ClCompile Include="src\Event.cpp" />
-    <ClCompile Include="src\Packet.cpp" />
-    <ClCompile Include="src\Router.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Event.hpp" />
