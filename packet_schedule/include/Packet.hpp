@@ -1,32 +1,26 @@
 #ifndef PACKET_HPP
 #define PACKET_HPP
 
+#include <vector>
 #include <iostream>
 
-enum class PacketType {
-    AUDIO,  // High-priority packets
-    VIDEO,  // Medium-priority packets
-    DATA    // Low-priority packets
-};
+// Define packet types
+enum class PacketType { AUDIO, VIDEO, DATA, REFERENCE };
 
-class Packet {
-public:
-    int id;               // Unique identifier for the packet
-    PacketType type;      // Packet type (audio, video, data)
-    double arrivalTime;   // Arrival time at the node
-    double size;          // Packet size in bits
-    double serviceTime;   // Service time based on transmission rate
+// Structure to represent a packet
+struct Packet {
+    PacketType type;
+    double creationTime;
+    double arrivalTime;  // ✅ Added this missing field
+    double size; // in bytes
+    int sourceNode;
+    bool isReference;
+    std::vector<double> nodeArrivalTimes;
+    std::vector<double> nodeDepartureTimes;
 
-    Packet(int packetId, PacketType packetType, double arrival, double packetSize, double service)
-        : id(packetId), type(packetType), arrivalTime(arrival), size(packetSize), serviceTime(service) {}
-
-    void display() const {
-        std::cout << "Packet ID: " << id
-                  << ", Type: " << static_cast<int>(type)
-                  << ", Arrival Time: " << arrivalTime
-                  << ", Size: " << size
-                  << ", Service Time: " << serviceTime
-                  << std::endl;
+    Packet(PacketType t, double creation, double arrival, double s, int node, bool ref = false)
+        : type(t), creationTime(creation), arrivalTime(arrival), size(s), sourceNode(node), isReference(ref) {
+        nodeArrivalTimes.push_back(arrival);
     }
 };
 

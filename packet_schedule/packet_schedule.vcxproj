@@ -155,14 +155,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="packet_schedule.cpp" />
+    <ClCompile Include="service\Router.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Event.hpp" />
     <ClInclude Include="include\Packet.hpp" />
     <ClInclude Include="include\Router.hpp" />
-    <ClInclude Include="service\FIFOQueue.hpp" />
-    <ClInclude Include="service\IQueue.hpp" />
-    <ClInclude Include="service\SPQueue.hpp" />
+    <ClInclude Include="service\PriorityQueue.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
