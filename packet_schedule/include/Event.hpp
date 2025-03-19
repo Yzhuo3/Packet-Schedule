@@ -1,33 +1,24 @@
-#ifndef EVENT_HPP
-#define EVENT_HPP
+#ifndef EVENT_H
+#define EVENT_H
 
-#include <functional>
+#include "Packet.hpp"
+#include "TrafficSource.hpp"
 
 enum class EventType {
-    PACKET_ARRIVAL,
-    PACKET_DEPARTURE
+    ARRIVAL,
+    DEPARTURE
 };
 
 class Event {
 public:
-    double time; // Event execution time
+    double event_time;
     EventType type;
-    std::function<void()> eventHandler;
+    Packet* packet;
+    int node_id;              // ID of the node where the event occurs
+    TrafficSource* source;    // The traffic source associated with this event (if applicable)
 
-    Event(double eventTime, EventType eventType, std::function<void()> handler)
-        : time(eventTime), type(eventType), eventHandler(handler) {}
-
-    // Execute the event
-    void execute() const {
-        if (eventHandler) {
-            eventHandler();
-        }
-    }
-
-    // Comparator for priority queue (Min-Heap: smaller time executes first)
-    bool operator>(const Event& other) const {
-        return time > other.time; // Higher time means lower priority
-    }
+    Event(double event_time, EventType type, Packet* packet, int node_id, TrafficSource* source = nullptr);
+    ~Event();
 };
 
-#endif // EVENT_HPP
+#endif // EVENT_H

@@ -1,27 +1,30 @@
-#ifndef PACKET_HPP
-#define PACKET_HPP
+#ifndef PACKET_H
+#define PACKET_H
 
-#include <vector>
-#include <iostream>
-
-// Define packet types
-enum class PacketType { AUDIO, VIDEO, DATA, REFERENCE };
-
-// Structure to represent a packet
-struct Packet {
-    PacketType type;
-    double creationTime;
-    double arrivalTime;  // ✅ Added this missing field
-    double size; // in bytes
-    int sourceNode;
-    bool isReference;
-    std::vector<double> nodeArrivalTimes;
-    std::vector<double> nodeDepartureTimes;
-
-    Packet(PacketType t, double creation, double arrival, double s, int node, bool ref = false)
-        : type(t), creationTime(creation), arrivalTime(arrival), size(s), sourceNode(node), isReference(ref) {
-        nodeArrivalTimes.push_back(arrival);
-    }
+// Use enum classes for better type safety
+enum class Priority {
+    PREMIUM,
+    ASSURED,
+    BEST_EFFORT
 };
 
-#endif // PACKET_HPP
+enum class PacketType {
+    AUDIO,
+    VIDEO,
+    DATA,
+    REFERENCE
+};
+
+class Packet {
+public:
+    double arrival_time;    // Time when the packet arrives
+    double departure_time;  // Time when the packet is transmitted
+    int size;               // Packet size in bytes
+    Priority priority;      // Priority level of the packet
+    PacketType type;        // Type of packet
+
+    Packet(double arrival_time, int size, Priority priority, PacketType type);
+    ~Packet();
+};
+
+#endif // PACKET_H
