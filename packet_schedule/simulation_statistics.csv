@@ -1,0 +1,8 @@
+Node,TotalArrivals,TotalDepartures,TotalDropped,AverageDelay,DroppedPremium,DroppedAssured,DroppedBestEffort,AvgBacklogPremium,AvgBacklogAssured,AvgBacklogBestEffort
+1,22903,15508,0,0.198857,0,0,0,0,0,0
+2,22507,14973,0,0.13118,0,0,0,0,0,0
+3,24095,15169,0,0.20733,0,0,0,0,0,0
+4,23901,15259,0,0.219439,0,0,0,0,0,0
+5,22737,14761,0,0.146928,0,0,0,0,0,0
+ReferenceTraffic,TotalArrivals,TotalDepartures,TotalDropped,AverageDelay
+Reference,0,0,0,0
