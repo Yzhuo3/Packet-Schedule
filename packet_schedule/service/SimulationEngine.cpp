@@ -1,6 +1,7 @@
 #include "../include/SimulationEngine.hpp"
 #include "../include/Event.hpp"
 #include "../include/Packet.hpp"
+#include "../include/Stats.hpp"
 #include "../include/Node.hpp"
 #include "../include/TrafficSource.hpp"
 
@@ -145,6 +146,11 @@ void SimulationEngine::run(std::string output)
         }
         eventQueue.pop();
         current_time = event->event_time;
+        
+        // Sample backlog for each node
+        for (auto node : nodes) {
+            sampleBacklog(node);
+        }
 
         // Update progress bar
         int progress = static_cast<int>((current_time / end_time) * 100.0);
@@ -173,10 +179,12 @@ void SimulationEngine::run(std::string output)
 
     // Print progress
     printProgressBar(100, barWidth);
-    std::cout << "\n"; // end the line
+    std::cout << "\n";
+    
+    writeDetailedReport(*this, output);
 
-    // Write the detailed result to a text file
-    writeDetailedReport(std::move(output));
+    // or export CSV:
+    // exportStatisticsCSV(*this, "DataSheet.csv", scenarioNumber, load);
 }
 
 // Handle arrival events
@@ -195,7 +203,7 @@ void SimulationEngine::handleArrival(Event* event)
 
         stats.totalArrivals++;
         stats.packetsIn++; // count as "in"
-        if (pkt->type == PacketType::REFERENCE) {
+        if (pkt->is_reference) {
             referenceStats.totalReferenceArrivals++;
         }
 
@@ -210,7 +218,7 @@ void SimulationEngine::handleArrival(Event* event)
                 case Priority::BEST_EFFORT: stats.droppedBestEffort++; break;
                 default: break;
             }
-            if (pkt->type == PacketType::REFERENCE) {
+            if (pkt->is_reference) {
                 referenceStats.totalReferenceDropped++;
             }
             delete pkt;
@@ -270,7 +278,7 @@ void SimulationEngine::handleDeparture(Event* event)
                 break;
         }
 
-        if (departed->type == PacketType::REFERENCE) {
+        if (departed->is_reference) {
             referenceStats.totalReferenceDelay += delay;
             referenceStats.totalReferenceDepartures++;
         }
@@ -288,242 +296,4 @@ void SimulationEngine::handleDeparture(Event* event)
             scheduleEvent(nextDep);
         }
     }
-}
-
-// Print an ASCII progress bar to console
-void SimulationEngine::printProgressBar(int progress, int barWidth)
-{
-    std::cout << "\n\rProgress: [";
-    int pos = barWidth * progress / 100;
-    for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) std::cout << "=";
-        else if (i == pos) std::cout << ">";
-        else std::cout << " ";
-    }
-    std::cout << "] " << progress << " %";
-    std::cout.flush();
-}
-
-// Write a detailed report file in the style you provided
-void SimulationEngine::writeDetailedReport(std::string date )
-{
-    std::string fullpath = "../output/" + date + "/" + outputFilename;
-
-    std::ofstream out(fullpath);
-    if (!out.is_open()) {
-        std::cerr << "Could not open " << fullpath << " for writing.\n";
-        return;
-    }
-
-    out << "SPQ system\n";
-    out << "Number of packets: " << totalGeneratedPackets << "\n";
-    
-    std::time_t now = std::time(nullptr);
-    std::tm tmNow;
-
-    localtime_s(&tmNow, &now);
-    
-    char buf[32];
-    std::strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", &tmNow);
-    out << "Timestamp: " << buf << "\n";
-
-    out << "Time simulation ended at: " << std::fixed << std::setprecision(3)
-        << current_time << " seconds\n";
-
-    out << "Number of nodes: " << numNodes << "\n";
-    out << "Number of audio sources: " << numAudio << "\n";
-    out << "Number of video sources: " << numVideo << "\n";
-    out << "Number of data sources: " << numData << "\n";
-    out << "Size of SPQ: " << queueSize << "\n";
-
-    out << "Reference packet type: ";
-    switch (referenceType) {
-        case TrafficType::AUDIO: out << "Audio\n"; break;
-        case TrafficType::VIDEO: out << "Video\n"; break;
-        case TrafficType::DATA:  out << "Data\n";  break;
-        default:                 out << "Unknown\n"; break;
-    }
-    out << "\n";
-
-    out << "(a) Average packet delay (waiting time) at each node\n";
-    for (auto& entry : nodeStatsMap) {
-        int nodeId = entry.first;
-        NodeStats& stats = entry.second;
-
-        double nodeAvgDelay = (stats.totalDepartures > 0)
-            ? (stats.totalDelay / stats.totalDepartures) : 0.0;
-
-        out << "Node " << nodeId << " average packet delay: "
-            << nodeAvgDelay << " seconds\n";
-
-        double premiumAvg = (stats.premiumCount > 0)
-            ? (stats.premiumDelaySum / stats.premiumCount) : 0.0;
-        double assuredAvg = (stats.assuredCount > 0)
-            ? (stats.assuredDelaySum / stats.assuredCount) : 0.0;
-        double bestAvg = (stats.bestEffortCount > 0)
-            ? (stats.bestEffortDelaySum / stats.bestEffortCount) : 0.0;
-
-        out << " Premium queue delay: " << premiumAvg << " seconds\n";
-        out << " Assured queue delay: " << assuredAvg << " seconds\n";
-        out << " Best-effort queue delay: " << bestAvg << " seconds\n";
-    }
-    out << "\n";
-
-    double totalPremDropped = 0, totalPremArrivals = 0;
-    double totalAssDropped = 0, totalAssArrivals = 0;
-    double totalBestDropped = 0, totalBestArrivals = 0;
-
-    for (auto& entry : nodeStatsMap) {
-        NodeStats& stats = entry.second;
-
-        totalPremDropped += stats.droppedPremium;
-        totalAssDropped  += stats.droppedAssured;
-        totalBestDropped += stats.droppedBestEffort;
-
-        totalPremArrivals += stats.premiumCount + stats.droppedPremium;
-        totalAssArrivals  += stats.assuredCount + stats.droppedAssured;
-        totalBestArrivals += stats.bestEffortCount + stats.droppedBestEffort;
-    }
-    double premBlock = (totalPremArrivals > 0) ? (totalPremDropped / totalPremArrivals) : 0.0;
-    double assBlock  = (totalAssArrivals > 0)  ? (totalAssDropped  / totalAssArrivals)  : 0.0;
-    double bestBlock = (totalBestArrivals > 0) ? (totalBestDropped / totalBestArrivals) : 0.0;
-
-    out << "(b) Average packet blocking ratio at each priority queue\n";
-    out << "Premium queue: " << premBlock << "\n";
-    out << "Assured queue: " << assBlock << "\n";
-    out << "Best-effort queue: " << bestBlock << "\n\n";
-
-    double totalPremBack = 0.0, totalAssBack = 0.0, totalBestBack = 0.0;
-    int totalSamples = 0;
-    for (auto& entry : nodeStatsMap) {
-        NodeStats& stats = entry.second;
-        totalPremBack += stats.cumulativeBacklogPremium;
-        totalAssBack  += stats.cumulativeBacklogAssured;
-        totalBestBack += stats.cumulativeBacklogBestEffort;
-        totalSamples  += stats.backlogSamples;
-    }
-    double avgPremBack = (totalSamples > 0) ? (totalPremBack / totalSamples) : 0.0;
-    double avgAssBack  = (totalSamples > 0) ? (totalAssBack  / totalSamples) : 0.0;
-    double avgBestBack = (totalSamples > 0) ? (totalBestBack / totalSamples) : 0.0;
-
-    out << "(c) Average number of backlogged packets at each priority queue\n";
-    out << "Premium queue: " << avgPremBack << "\n";
-    out << "Assured queue: " << avgAssBack << "\n";
-    out << "Best-effort queue: " << avgBestBack << "\n\n";
-
-    double refDelay = (referenceStats.totalReferenceDepartures > 0)
-        ? (referenceStats.totalReferenceDelay / referenceStats.totalReferenceDepartures) : 0.0;
-    out << "(d) Average end-to-end packet delay for reference traffic\n";
-    out << refDelay << "\n\n";
-
-    double refBlock = 0.0;
-    if (referenceStats.totalReferenceArrivals > 0) {
-        refBlock = (double)referenceStats.totalReferenceDropped / referenceStats.totalReferenceArrivals;
-    }
-    out << "(e) Overall packet blocking ratio for reference traffic\n";
-    out << refBlock << "\n\n";
-
-    for (auto& entry : nodeStatsMap) {
-        int nodeId = entry.first;
-        NodeStats& stats = entry.second;
-        out << "Node " << nodeId << " packets into node: " << stats.packetsIn << "\n";
-        out << "Node " << nodeId << " packets out of node: "  << stats.packetsOut << "\n";
-    }
-    out << "\n";
-
-    long long totalDropped = 0;
-    long long sumArrivals = 0;
-    for (auto& entry : nodeStatsMap) {
-        totalDropped += entry.second.totalDropped;
-        sumArrivals  += entry.second.totalArrivals;
-    }
-    out << "Dropped packets: " << totalDropped << "\n";
-    out << "Total generated packets: " << totalGeneratedPackets << "\n";
-
-    long long sumDepartures = 0;
-    for (auto& entry : nodeStatsMap) {
-        sumDepartures += entry.second.totalDepartures;
-    }
-    // out << "Successfully transmitted packets: " << sumDepartures << "\n\n";
-
-    out.close();
-    // std::cout << "\nDetailed report saved to " << fullpath << "\n";
-}
-
-void SimulationEngine::exportStatisticsCSV(const std::string& csvFilename,
-                                           int scenarioNumber,
-                                           double load)
-{
-    // Open in append mode
-    std::ofstream out(csvFilename, std::ios::app);
-    if (!out.is_open()) {
-        std::cerr << "Cannot open " << csvFilename << " for CSV output.\n";
-        return;
-    }
-
-    // If file is empty, write a header row
-    out.seekp(0, std::ios::end);
-    if (out.tellp() == 0) {
-        out << "Scenario,Load,Node,"
-            << "AvgDelay,PremiumDelay,AssuredDelay,BestEffortDelay,"
-            << "PremiumBlock,AssuredBlock,BestEffortBlock,"
-            << "RefAvgDelay,RefBlock,"
-            << "PacketsIn,PacketsOut"
-            << "\n";
-    }
-
-    // Compute reference traffic stats once
-    double refAvgDelay = 0.0;
-    if (referenceStats.totalReferenceDepartures > 0) {
-        refAvgDelay = referenceStats.totalReferenceDelay / referenceStats.totalReferenceDepartures;
-    }
-    double refBlockRatio = 0.0;
-    if (referenceStats.totalReferenceArrivals > 0) {
-        refBlockRatio = (double)referenceStats.totalReferenceDropped / referenceStats.totalReferenceArrivals;
-    }
-
-    // For each node, gather stats & write a row
-    for (auto& entry : nodeStatsMap) {
-        int nodeId = entry.first;
-        NodeStats& stats = entry.second;
-
-        // Node-level average delay
-        double avgDelay = (stats.totalDepartures > 0)
-            ? (stats.totalDelay / stats.totalDepartures) : 0.0;
-
-        // Per-queue delays (if you track them)
-        double premiumAvgDelay = (stats.premiumCount > 0)
-            ? (stats.premiumDelaySum / stats.premiumCount) : 0.0;
-        double assuredAvgDelay = (stats.assuredCount > 0)
-            ? (stats.assuredDelaySum / stats.assuredCount) : 0.0;
-        double bestEffortAvgDelay = (stats.bestEffortCount > 0)
-            ? (stats.bestEffortDelaySum / stats.bestEffortCount) : 0.0;
-
-        int premArrivals   = stats.premiumCount   + stats.droppedPremium;
-        int assuredArrivals= stats.assuredCount   + stats.droppedAssured;
-        int bestArrivals   = stats.bestEffortCount+ stats.droppedBestEffort;
-
-        double premBlock = (premArrivals > 0) ? (double)stats.droppedPremium / premArrivals : 0.0;
-        double assBlock  = (assuredArrivals > 0) ? (double)stats.droppedAssured / assuredArrivals : 0.0;
-        double bestBlock = (bestArrivals > 0) ? (double)stats.droppedBestEffort / bestArrivals : 0.0;
-        
-        out << scenarioNumber << ","
-            << load << ","
-            << nodeId << ","
-            << std::fixed << std::setprecision(6) << avgDelay << ","
-            << premiumAvgDelay << ","
-            << assuredAvgDelay << ","
-            << bestEffortAvgDelay << ","
-            << premBlock << ","
-            << assBlock << ","
-            << bestBlock << ","
-            << refAvgDelay << ","
-            << refBlockRatio << ","
-            << stats.packetsIn << ","
-            << stats.packetsOut
-            << "\n";
-    }
-
-    out.close();
-    // std::cout << "Appended CSV data to " << csvFilename << "\n";
 }

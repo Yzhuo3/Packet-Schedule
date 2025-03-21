@@ -59,8 +59,7 @@ public:
     // Run the simulation until the simulation clock reaches end_time
     // Only a progress bar is shown on the console.
     void run(std::string output);
-
-private:
+    
     // ---------- Simulation Parameters ------------
     double current_time;          ///< The current simulation time
     double end_time;             ///< The simulation end time
@@ -133,16 +132,6 @@ private:
     // Event handling
     void handleArrival(Event* event);
     void handleDeparture(Event* event);
-
-    // Print an ASCII progress bar on the console
-    void printProgressBar(int progress, int barWidth);
-
-    // Write the final, detailed text report in the style of your sample
-    void writeDetailedReport(std::string date );
-
-    void exportStatisticsCSV(const std::string& csvFilename,
-                         int scenarioNumber,
-                         double load);
 };
 
 #endif // SIMULATIONENGINE_H

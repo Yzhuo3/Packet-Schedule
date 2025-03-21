@@ -1,0 +1,92 @@
+SPQ system
+Number of packets: 1000000
+Timestamp: 20250321_110050
+Time simulation ended at: 10.000 seconds
+Number of nodes: 10
+Number of audio sources: 19
+Number of video sources: 24
+Number of data sources: 24
+Size of SPQ: 100
+Reference packet type: Audio
+
+(a) Average packet delay (waiting time) at each node
+Node 1 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+Node 2 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+Node 3 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+Node 4 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+Node 5 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+Node 6 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+Node 7 average packet delay: 0.003 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.007 seconds
+Node 8 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+Node 9 average packet delay: 0.002 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.003 seconds
+Node 10 average packet delay: 0.001 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.001 seconds
+ Best-effort queue delay: 0.002 seconds
+
+(b) Average packet blocking ratio at each priority queue
+Premium queue: 0.000
+Assured queue: 0.000
+Best-effort queue: 0.000
+
+(c) Average number of backlogged packets at each priority queue
+Premium queue: 0.000
+Assured queue: 0.000
+Best-effort queue: 0.000
+
+(d) Average end-to-end packet delay for reference traffic
+0.000
+
+(e) Overall packet blocking ratio for reference traffic
+0.000
+
+Node 1 packets into node: 12202
+Node 1 packets out of node: 12199
+Node 2 packets into node: 13100
+Node 2 packets out of node: 13099
+Node 3 packets into node: 12491
+Node 3 packets out of node: 12491
+Node 4 packets into node: 12682
+Node 4 packets out of node: 12677
+Node 5 packets into node: 12318
+Node 5 packets out of node: 12315
+Node 6 packets into node: 12176
+Node 6 packets out of node: 12174
+Node 7 packets into node: 12786
+Node 7 packets out of node: 12779
+Node 8 packets into node: 12286
+Node 8 packets out of node: 12283
+Node 9 packets into node: 13023
+Node 9 packets out of node: 13023
+Node 10 packets into node: 12680
+Node 10 packets out of node: 12679
+
+Dropped packets: 0
+Total generated packets: 1000000

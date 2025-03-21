@@ -3,30 +3,31 @@
 
 #include "Packet.hpp"
 
-// Define traffic types.
 enum class TrafficType {
     AUDIO,
     VIDEO,
-    DATA,
-    REFERENCE
+    DATA
 };
 
 class TrafficSource {
 public:
+    // Now we only have AUDIO, VIDEO, or DATA for queue logic
     TrafficType type;
+    bool is_reference;     // NEW: true if this flow is the special "reference" flow
+
     double peak_rate;      // in kbps
-    double mean_on_time;   // average ON time in seconds
-    double mean_off_time;  // average OFF time in seconds
+    double mean_on_time;   // average ON time (seconds)
+    double mean_off_time;  // average OFF time (seconds)
     int packet_size;       // packet size in bytes
 
-    // State variables for the ON/OFF model.
     bool is_on;
     double next_state_change_time;
 
-    TrafficSource(TrafficType type, double peak_rate, double mean_on_time, double mean_off_time, int packet_size);
+    TrafficSource(TrafficType type, bool is_reference,
+                  double peak_rate, double mean_on_time,
+                  double mean_off_time, int packet_size);
     ~TrafficSource();
 
-    // Generate a packet at the current time if the source is ON.
     Packet* generatePacket(double current_time);
 };
 

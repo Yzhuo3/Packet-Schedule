@@ -1,0 +1,62 @@
+SPQ system
+Number of packets: 1000000
+Timestamp: 20250321_110046
+Time simulation ended at: 10.000 seconds
+Number of nodes: 5
+Number of audio sources: 27
+Number of video sources: 33
+Number of data sources: 33
+Size of SPQ: 100
+Reference packet type: Audio
+
+(a) Average packet delay (waiting time) at each node
+Node 1 average packet delay: 0.031 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.002 seconds
+ Best-effort queue delay: 0.082 seconds
+Node 2 average packet delay: 0.023 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.002 seconds
+ Best-effort queue delay: 0.060 seconds
+Node 3 average packet delay: 0.023 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.002 seconds
+ Best-effort queue delay: 0.059 seconds
+Node 4 average packet delay: 0.016 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.002 seconds
+ Best-effort queue delay: 0.043 seconds
+Node 5 average packet delay: 0.031 seconds
+ Premium queue delay: 0.000 seconds
+ Assured queue delay: 0.002 seconds
+ Best-effort queue delay: 0.090 seconds
+
+(b) Average packet blocking ratio at each priority queue
+Premium queue: 0.040
+Assured queue: 0.042
+Best-effort queue: 0.039
+
+(c) Average number of backlogged packets at each priority queue
+Premium queue: 0.000
+Assured queue: 0.000
+Best-effort queue: 0.000
+
+(d) Average end-to-end packet delay for reference traffic
+0.000
+
+(e) Overall packet blocking ratio for reference traffic
+0.000
+
+Node 1 packets into node: 18926
+Node 1 packets out of node: 17658
+Node 2 packets into node: 17767
+Node 2 packets out of node: 17362
+Node 3 packets into node: 17763
+Node 3 packets out of node: 17164
+Node 4 packets into node: 17760
+Node 4 packets out of node: 17161
+Node 5 packets into node: 18468
+Node 5 packets out of node: 17529
+
+Dropped packets: 3646
+Total generated packets: 1000000
