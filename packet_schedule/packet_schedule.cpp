@@ -17,10 +17,6 @@ const int BASE_NUM_DATA  = 5;   // Base number of data sources
 const double BASE_OFFERED_LOAD = 0.105;
 const double TRANSMISSION_RATE = 10e6; // 10 Mbps
 
-/**
- * @brief Generate a filename string based on scenario number and offered load.
- *        Example: "Scenario_4_output_0.5.txt"
- */
 std::string generateOutputFilename(int scenario, double load)
 {
     std::ostringstream oss;
@@ -40,56 +36,44 @@ void runSimulationForLoad(int scenario,
                           int M,
                           int combinedCapacity,
                           TrafficType refTrafficType,
-                          double simEndTime,
+                          int totalPackets,           // <-- Now we pass totalPackets, not simEndTime
                           const std::string& dateString)
 {
-    // Scale the number of background sources relative to the base offered load
+    // Scale the number of background sources
     double scale = offeredLoad / BASE_OFFERED_LOAD;
-    int numAudio = std::max(1, static_cast<int>(std::round(BASE_NUM_AUDIO * scale)));
-    int numVideo = std::max(1, static_cast<int>(std::round(BASE_NUM_VIDEO * scale)));
-    int numData  = std::max(1, static_cast<int>(std::round(BASE_NUM_DATA  * scale)));
+    int numAudio = std::max(1, (int)std::round(BASE_NUM_AUDIO * scale));
+    int numVideo = std::max(1, (int)std::round(BASE_NUM_VIDEO * scale));
+    int numData  = std::max(1, (int)std::round(BASE_NUM_DATA  * scale));
 
-    // We'll assume "totalPackets" is some large number or estimate
-    int totalPackets = 1000000;
-
-    // Build the output filename (like "Scenario_4_output_0.5.txt")
+    // Build the output filename
     std::string outFile = generateOutputFilename(scenario, offeredLoad);
 
-    // Print some info to console
     std::cout << "\n--- Running Simulation for Offered Load = " << offeredLoad
               << ", M = " << M << ", K = " << combinedCapacity
+              << ", totalPackets = " << totalPackets
               << ", Reference Traffic = ";
 
-    // We'll interpret refTrafficType to decide the queue logic for the reference flow,
-    // but the "is_reference" boolean will ensure it increments reference stats.
     switch (refTrafficType) {
-    case TrafficType::AUDIO:
-        std::cout << "Audio-like";
-        break;
-    case TrafficType::VIDEO:
-        std::cout << "Video-like";
-        break;
-    case TrafficType::DATA:
-        std::cout << "Data-like";
-        break;
-    default:
-        std::cout << "Unknown";
-        break;
+    case TrafficType::AUDIO: std::cout << "Audio-like"; break;
+    case TrafficType::VIDEO: std::cout << "Video-like"; break;
+    case TrafficType::DATA:  std::cout << "Data-like";  break;
+    default:                 std::cout << "Unknown";    break;
     }
     std::cout << " ---\n";
 
     // Create the simulation engine
-    SimulationEngine engine(simEndTime,
-                            outFile,
-                            M,
-                            numAudio,
-                            numVideo,
-                            numData,
-                            combinedCapacity,
-                            refTrafficType,
-                            totalPackets);
+    SimulationEngine engine(
+        outFile,
+        M,
+        numAudio,
+        numVideo,
+        numData,
+        combinedCapacity,
+        refTrafficType,
+        totalPackets
+    );
 
-    // Create M nodes (1..M)
+    // Create M nodes
     std::vector<Node*> nodes;
     nodes.reserve(M);
     for (int i = 1; i <= M; ++i) {
@@ -102,56 +86,33 @@ void runSimulationForLoad(int scenario,
     for (int i = 1; i <= M; ++i) {
         // Audio
         for (int j = 0; j < numAudio; ++j) {
-            // (type=AUDIO, is_reference=false, peak_rate=64, etc.)
-            TrafficSource* ts = new TrafficSource(TrafficType::AUDIO,
-                                                  false,
-                                                  64.0, 0.36, 0.64, 120);
+            TrafficSource* ts = new TrafficSource(TrafficType::AUDIO, false, 64.0, 0.36, 0.64, 120);
             engine.addTrafficSource(ts, i);
         }
         // Video
         for (int j = 0; j < numVideo; ++j) {
-            TrafficSource* ts = new TrafficSource(TrafficType::VIDEO,
-                                                  false,
-                                                  384.0, 0.33, 0.73, 1000);
+            TrafficSource* ts = new TrafficSource(TrafficType::VIDEO, false, 384.0, 0.33, 0.73, 1000);
             engine.addTrafficSource(ts, i);
         }
         // Data
         for (int j = 0; j < numData; ++j) {
-            TrafficSource* ts = new TrafficSource(TrafficType::DATA,
-                                                  false,
-                                                  256.0, 0.35, 0.65, 583);
+            TrafficSource* ts = new TrafficSource(TrafficType::DATA, false, 256.0, 0.35, 0.65, 583);
             engine.addTrafficSource(ts, i);
         }
     }
 
-    // Create one reference traffic source at node 1
-    // Mark it as reference => is_reference=true
+    // One reference flow at node 1
     TrafficSource* refSource = nullptr;
     if (refTrafficType == TrafficType::AUDIO) {
-        // Audio-like reference
-        refSource = new TrafficSource(TrafficType::AUDIO,
-                                      true,  // is_reference = true
-                                      64.0, 0.36, 0.64, 120);
+        refSource = new TrafficSource(TrafficType::AUDIO, true, 64.0, 0.36, 0.64, 120);
+    } else if (refTrafficType == TrafficType::VIDEO) {
+        refSource = new TrafficSource(TrafficType::VIDEO, true, 384.0, 0.33, 0.73, 1000);
+    } else if (refTrafficType == TrafficType::DATA) {
+        refSource = new TrafficSource(TrafficType::DATA, true, 256.0, 0.35, 0.65, 583);
+    } else {
+        // fallback
+        refSource = new TrafficSource(TrafficType::AUDIO, true, 64.0, 0.36, 0.64, 120);
     }
-    else if (refTrafficType == TrafficType::VIDEO) {
-        // Video-like reference
-        refSource = new TrafficSource(TrafficType::VIDEO,
-                                      true,
-                                      384.0, 0.33, 0.73, 1000);
-    }
-    else if (refTrafficType == TrafficType::DATA) {
-        // Data-like reference
-        refSource = new TrafficSource(TrafficType::DATA,
-                                      true,
-                                      256.0, 0.35, 0.65, 583);
-    }
-    else {
-        // Fallback: audio-like reference
-        refSource = new TrafficSource(TrafficType::AUDIO,
-                                      true,
-                                      64.0, 0.36, 0.64, 120);
-    }
-    // Add that reference source to node 1
     engine.addTrafficSource(refSource, 1);
 
     // Run the simulation
@@ -164,37 +125,35 @@ void runSimulationForLoad(int scenario,
 }
 
 // Scenario 1: infinite buffer, M=5, reference=Audio-like
-void runScenario1(double simEndTime, double loadStart, double loadEnd,
-                  double loadIncrement, const std::string& output)
+void runScenario1(double loadStart, double loadEnd, double loadIncrement,
+                  const std::string& output, int totalPackets)
 {
     int M = 5;
-    int combinedCapacity = 1000000; // ~infinite
-    // We'll treat reference flow as AUDIO
+    int combinedCapacity = 1000000; 
     TrafficType refType = TrafficType::AUDIO;
 
-    std::cout << "\n====== Scenario 1: Infinite Buffer (K=∞), M=5, Reference=Audio-like ======\n";
+    std::cout << "\n====== Scenario 1: M=5, K=∞, Audio-like reference ======\n";
     for (double load = loadStart; load <= loadEnd; load += loadIncrement) {
-        runSimulationForLoad(1, load, M, combinedCapacity, refType, simEndTime, output);
+        runSimulationForLoad(1, load, M, combinedCapacity, refType, totalPackets, output);
     }
 }
 
 // Scenario 2: finite buffer (K=100), M=5, reference=Audio-like
-void runScenario2(double simEndTime, double loadStart, double loadEnd,
-                  double loadIncrement, const std::string& output)
+void runScenario2(double loadStart, double loadEnd, double loadIncrement,
+                  const std::string& output, int totalPackets)
 {
     int M = 5;
     int combinedCapacity = 100;
     TrafficType refType = TrafficType::AUDIO;
-
-    std::cout << "\n====== Scenario 2: Finite Buffer (K=100), M=5, Reference=Audio-like ======\n";
+    std::cout << "\n====== Scenario 2: M=5, K=100, Audio-like reference ======\n";
     for (double load = loadStart; load <= loadEnd; load += loadIncrement) {
-        runSimulationForLoad(2, load, M, combinedCapacity, refType, simEndTime, output);
+        runSimulationForLoad(2, load, M, combinedCapacity, refType, totalPackets, output);
     }
 }
 
 // Scenario 3: finite buffer (K=100), M=10, reference=Audio-like
-void runScenario3(double simEndTime, double loadStart, double loadEnd,
-                  double loadIncrement, const std::string& output)
+void runScenario3(double loadStart, double loadEnd, double loadIncrement,
+                  const std::string& output, int totalPackets)
 {
     int M = 10;
     int combinedCapacity = 100;
@@ -202,13 +161,13 @@ void runScenario3(double simEndTime, double loadStart, double loadEnd,
 
     std::cout << "\n====== Scenario 3: Finite Buffer (K=100), M=10, Reference=Audio-like ======\n";
     for (double load = loadStart; load <= loadEnd; load += loadIncrement) {
-        runSimulationForLoad(3, load, M, combinedCapacity, refType, simEndTime, output);
+        runSimulationForLoad(3, load, M, combinedCapacity, refType, totalPackets, output);
     }
 }
 
 // Scenario 4: finite buffer (K=100), M=5, reference=Video-like
-void runScenario4(double simEndTime, double loadStart, double loadEnd,
-                  double loadIncrement, const std::string& output)
+void runScenario4(double loadStart, double loadEnd, double loadIncrement,
+                  const std::string& output, int totalPackets)
 {
     int M = 5;
     int combinedCapacity = 100;
@@ -216,13 +175,13 @@ void runScenario4(double simEndTime, double loadStart, double loadEnd,
 
     std::cout << "\n====== Scenario 4: Finite Buffer (K=100), M=5, Reference=Video-like ======\n";
     for (double load = loadStart; load <= loadEnd; load += loadIncrement) {
-        runSimulationForLoad(4, load, M, combinedCapacity, refType, simEndTime, output);
+        runSimulationForLoad(4, load, M, combinedCapacity, refType, totalPackets, output);
     }
 }
 
 // Scenario 5: finite buffer (K=100), M=5, reference=Data-like
-void runScenario5(double simEndTime, double loadStart, double loadEnd,
-                  double loadIncrement, const std::string& output)
+void runScenario5(double loadStart, double loadEnd, double loadIncrement,
+                  const std::string& output, int totalPackets)
 {
     int M = 5;
     int combinedCapacity = 100;
@@ -230,7 +189,7 @@ void runScenario5(double simEndTime, double loadStart, double loadEnd,
 
     std::cout << "\n====== Scenario 5: Finite Buffer (K=100), M=5, Reference=Data-like ======\n";
     for (double load = loadStart; load <= loadEnd; load += loadIncrement) {
-        runSimulationForLoad(5, load, M, combinedCapacity, refType, simEndTime, output);
+        runSimulationForLoad(5, load, M, combinedCapacity, refType, totalPackets, output);
     }
 }
 
@@ -242,19 +201,16 @@ void runScenario5(double simEndTime, double loadStart, double loadEnd,
  */
 int main(int argc, char* argv[])
 {
-    double simEndTime   = 10.0;
     double loadStart    = 0.1;
     double loadEnd      = 0.9;
     double loadIncrement= 0.1;
-    int scenario        = 0; // 0 => run all
+    int scenario        = 0; 
+    int totalPackets    = 1000000;  // default
 
-    // Parse CLI
+    // Parse CLI: remove -T, add -N for totalPackets
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        if (arg == "-T" && i + 1 < argc) {
-            simEndTime = std::stod(argv[++i]);
-        }
-        else if (arg == "-l" && i + 1 < argc) {
+        if (arg == "-l" && i + 1 < argc) {
             loadStart = std::stod(argv[++i]);
         }
         else if (arg == "-u" && i + 1 < argc) {
@@ -263,16 +219,19 @@ int main(int argc, char* argv[])
         else if (arg == "-i" && i + 1 < argc) {
             loadIncrement = std::stod(argv[++i]);
         }
-        else if (arg == "-s" && i + 1 < argc) {
-            scenario = std::stoi(argv[++i]);
-        }
+        // else if (arg == "-s" && i + 1 < argc) {
+        //     scenario = std::stoi(argv[++i]);
+        // }
+        // else if (arg == "-N" && i + 1 < argc) {
+        //     totalPackets = std::stoi(argv[++i]); 
+        // }
         else if (arg == "-h" || arg == "--help") {
             std::cout << "Usage: " << argv[0] << " [options]\n"
-                      << "  -T <sim_end_time>    Total simulation time in seconds\n"
-                      << "  -l <load_start>      Starting offered load\n"
-                      << "  -u <load_end>        Ending offered load\n"
-                      << "  -i <load_increment>  Offered load increment\n"
-                      << "  -s <scenario>        Scenario number (1-5). 0 => run all.\n";
+                      // << "  -N <totalPackets>     Number of total packets to process (default=1000000)\n"
+                      // << "  -s <scenario>         Scenario # (1-5). 0 => run all.\n"
+                      << "  -l <load_start>       Starting offered load (default=0.1)\n"
+                      << "  -u <load_end>         Ending offered load (default=0.9)\n"
+                      << "  -i <load_increment>   Load increment (default=0.1)\n";
             return 0;
         }
         else {
@@ -281,15 +240,33 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Seed random
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
+    std::cout << "Enter scenario [1-5, 0=all, default=0]: ";
+    {
+        std::string line;
+        if (std::getline(std::cin, line)) {
+            if (!line.empty()) {
+                scenario = std::stoi(line);
+            }
+        }
+    }
 
+    // Ask user for totalPackets
+    std::cout << "Enter totalPackets [default=1000000]: ";
+    {
+        std::string line;
+        if (std::getline(std::cin, line)) {
+            if (!line.empty()) {
+                totalPackets = std::stoi(line);
+            }
+        }
+    }
+    
     std::cout << "Starting Simulation Scenarios...\n"
-              << "Simulation End Time: " << simEndTime << " seconds\n"
+              << "Total Packets: " << totalPackets << "\n"
               << "Offered Load Range: " << loadStart << " to " << loadEnd
               << " (increment: " << loadIncrement << ")\n";
 
-    // Build a timestamped folder name
+    // Make a timestamped folder
     std::time_t now = std::time(nullptr);
     std::tm tmNow;
 #ifdef _WIN32
@@ -309,27 +286,27 @@ int main(int argc, char* argv[])
     system(command.c_str());
 
     if (scenario == 0) {
-        runScenario1(simEndTime, loadStart, loadEnd, loadIncrement, buf);
-        runScenario2(simEndTime, loadStart, loadEnd, loadIncrement, buf);
-        runScenario3(simEndTime, loadStart, loadEnd, loadIncrement, buf);
-        runScenario4(simEndTime, loadStart, loadEnd, loadIncrement, buf);
-        runScenario5(simEndTime, loadStart, loadEnd, loadIncrement, buf);
+        runScenario1(loadStart, loadEnd, loadIncrement, buf, totalPackets);
+        runScenario2(loadStart, loadEnd, loadIncrement, buf, totalPackets);
+        runScenario3(loadStart, loadEnd, loadIncrement, buf, totalPackets);
+        runScenario4(loadStart, loadEnd, loadIncrement, buf, totalPackets);
+        runScenario5(loadStart, loadEnd, loadIncrement, buf, totalPackets);
     } else {
         switch (scenario) {
         case 1:
-            runScenario1(simEndTime, loadStart, loadEnd, loadIncrement, buf);
+            runScenario1(loadStart, loadEnd, loadIncrement, buf, totalPackets);
             break;
         case 2:
-            runScenario2(simEndTime, loadStart, loadEnd, loadIncrement, buf);
+            runScenario2(loadStart, loadEnd, loadIncrement, buf, totalPackets);
             break;
         case 3:
-            runScenario3(simEndTime, loadStart, loadEnd, loadIncrement, buf);
+            runScenario3(loadStart, loadEnd, loadIncrement, buf, totalPackets);
             break;
         case 4:
-            runScenario4(simEndTime, loadStart, loadEnd, loadIncrement, buf);
+            runScenario4(loadStart, loadEnd, loadIncrement, buf, totalPackets);
             break;
         case 5:
-            runScenario5(simEndTime, loadStart, loadEnd, loadIncrement, buf);
+            runScenario5(loadStart, loadEnd, loadIncrement, buf, totalPackets);
             break;
         default:
             std::cerr << "Invalid scenario number. Please choose between 1 and 5.\n";

@@ -14,41 +14,31 @@
 #include <utility>
 
 // Constructor: initialize simulation clock, end time, and stats
-SimulationEngine::SimulationEngine(
-    double end_time,
-    const std::string& outputFilename,
-    int M,                    // number of nodes
-    int numAudioSources,
-    int numVideoSources,
-    int numDataSources,
-    int spqSize,
-    TrafficType refType,
-    int totalPackets
-)
-  : current_time(0.0),
-    end_time(end_time),
-    outputFilename(outputFilename),
+SimulationEngine::SimulationEngine(const std::string& outputFilename,
+                                   int M,
+                                   int numAudioSources,
+                                   int numVideoSources,
+                                   int numDataSources,
+                                   int spqSize,
+                                   TrafficType refType,
+                                   int totalPackets)
+  : outputFilename(outputFilename),
     numNodes(M),
     numAudio(numAudioSources),
     numVideo(numVideoSources),
     numData(numDataSources),
     queueSize(spqSize),
     referenceType(refType),
-    totalGeneratedPackets(totalPackets)
+    totalGeneratedPackets(totalPackets),
+    arrivalsSoFar(0)
 {
-    // Initialize reference stats
-    referenceStats.totalReferenceArrivals = 0;
+    current_time = 0.0;
+    referenceStats.totalReferenceArrivals   = 0;
     referenceStats.totalReferenceDepartures = 0;
-    referenceStats.totalReferenceDropped = 0;
-    referenceStats.totalReferenceDelay = 0.0;
-
-    // Create the output directory if it doesn't exist
-// #ifdef _WIN32
-//     system("mkdir \"../output/\"");
-// #else
-//     system("mkdir -p ../output");
-// #endif
+    referenceStats.totalReferenceDropped    = 0;
+    referenceStats.totalReferenceDelay      = 0.0;
 }
+
 
 // Destructor: clean up any remaining events
 SimulationEngine::~SimulationEngine()
@@ -122,68 +112,75 @@ void SimulationEngine::sampleBacklog(Node* node)
     stats.backlogSamples++;
 }
 
-// Main simulation loop
-void SimulationEngine::run(std::string output)
+void SimulationEngine::run(const std::string &dateString)
 {
-    // Initialize arrival events for each traffic source
-    for (auto& pair : trafficSources) {
+    // 1) Initialize an arrival event at time=0 for each traffic source
+    for (auto &pair : trafficSources) {
         TrafficSource* ts = pair.first;
-        int node_id = pair.second;
-        Event* event = new Event(current_time, EventType::ARRIVAL, nullptr, node_id, ts);
-        scheduleEvent(event);
+        int node_id       = pair.second;
+        // Create an ARRIVAL event at t=0
+        Event* initEvent  = new Event(0.0, EventType::ARRIVAL, nullptr, node_id, ts);
+        scheduleEvent(initEvent);
     }
 
-    // For a progress bar
+    // 2) For a progress bar
     int lastProgress = -1;
-    int barWidth = 50;
+    int barWidth     = 50;
 
-    // MAIN EVENT LOOP
+    // 3) Main event loop
     while (!eventQueue.empty()) {
-        Event* event = eventQueue.top();
-        // If next event is beyond end time, stop
-        if (event->event_time >= end_time) {
+        // If we've reached the total number of arrivals, stop
+        if (arrivalsSoFar >= totalGeneratedPackets) {
             break;
         }
+
+        // Pop the earliest event
+        Event* event = eventQueue.top();
         eventQueue.pop();
+
+        // Update current simulation time
         current_time = event->event_time;
-        
-        // Sample backlog for each node
+
+        // Sample backlog for each node at this event
         for (auto node : nodes) {
             sampleBacklog(node);
         }
 
-        // Update progress bar
-        int progress = static_cast<int>((current_time / end_time) * 100.0);
+        // Update progress bar (based on arrivalsSoFar / totalGeneratedPackets)
+        int progress = static_cast<int>(
+            (static_cast<double>(arrivalsSoFar) / totalGeneratedPackets) * 100.0
+        );
         if (progress != lastProgress) {
             lastProgress = progress;
             printProgressBar(progress, barWidth);
         }
 
-        // Process the event
+        // Handle the event (arrival or departure)
         if (event->type == EventType::ARRIVAL) {
             handleArrival(event);
-        }
-        else if (event->type == EventType::DEPARTURE) {
+        } else if (event->type == EventType::DEPARTURE) {
             handleDeparture(event);
         }
 
+        // Clean up this event
         delete event;
     }
 
-    // Clear any leftover events
+    // 4) Clear any leftover events
     while (!eventQueue.empty()) {
         Event* ev = eventQueue.top();
         eventQueue.pop();
         delete ev;
     }
 
-    // Print progress
+    // 5) Finalize the progress bar
     printProgressBar(100, barWidth);
     std::cout << "\n";
-    
-    writeDetailedReport(*this, output);
 
-    // or export CSV:
+    // 6) Produce final stats/report
+    writeDetailedReport(*this, dateString);
+    
+    // export CSV:
     // exportStatisticsCSV(*this, "DataSheet.csv", scenarioNumber, load);
 }
 
@@ -192,75 +189,81 @@ void SimulationEngine::handleArrival(Event* event)
 {
     TrafficSource* ts = event->source;
     if (!ts) return;
-
-    Packet* pkt = ts->generatePacket(current_time);
-    double interarrival = (ts->packet_size * 8.0) / (ts->peak_rate * 1000.0);
-    double next_time = (pkt ? current_time + interarrival : ts->next_state_change_time);
-
-    Node* node = getNodeById(event->node_id);
+    
+    double arrivalTime = event->event_time;
+    
+    Packet* pkt = ts->generatePacket(arrivalTime);
+    
     if (pkt) {
-        NodeStats& stats = nodeStatsMap[node->id];
-
+        arrivalsSoFar++;
+        if (arrivalsSoFar > totalGeneratedPackets) {
+            delete pkt;
+            return;
+        }
+        
+        Node* node = getNodeById(event->node_id);
+        NodeStats &stats = nodeStatsMap[node->id];
         stats.totalArrivals++;
-        stats.packetsIn++; // count as "in"
+        stats.packetsIn++;
+
         if (pkt->is_reference) {
             referenceStats.totalReferenceArrivals++;
         }
 
-        // Enqueue
+        // Try to enqueue
         bool success = node->enqueuePacket(pkt);
         if (!success) {
-            // Dropped
             stats.totalDropped++;
+            // Check which queue was intended
             switch (pkt->priority) {
-                case Priority::PREMIUM:     stats.droppedPremium++; break;
-                case Priority::ASSURED:     stats.droppedAssured++; break;
-                case Priority::BEST_EFFORT: stats.droppedBestEffort++; break;
-                default: break;
+            case Priority::PREMIUM:     stats.droppedPremium++; break;
+            case Priority::ASSURED:     stats.droppedAssured++; break;
+            case Priority::BEST_EFFORT: stats.droppedBestEffort++; break;
             }
             if (pkt->is_reference) {
                 referenceStats.totalReferenceDropped++;
             }
             delete pkt;
         } else {
-            // If node was idle
-            int totalQueueSize = node->premium_queue.size()
-                               + node->assured_queue.size()
-                               + node->best_effort_queue.size();
+            int totalQueueSize = node->premium_queue.size() +
+                                 node->assured_queue.size() +
+                                 node->best_effort_queue.size();
             if (totalQueueSize == 1) {
                 double transmission_time = (pkt->size * 8.0) / node->transmission_rate;
-                double departureTime = current_time + transmission_time;
-                if (departureTime < end_time) {
-                    Event* depEvent = new Event(departureTime, EventType::DEPARTURE, nullptr, node->id);
-                    scheduleEvent(depEvent);
-                }
+                double departureTime = arrivalTime + transmission_time;
+                Event* depEvent = new Event(departureTime, EventType::DEPARTURE, nullptr, node->id);
+                scheduleEvent(depEvent);
             }
         }
     }
-
-    // Schedule next arrival
-    if (next_time < end_time) {
+    
+    if (arrivalsSoFar < totalGeneratedPackets) {
+        double interarrival = (ts->packet_size * 8.0) / (ts->peak_rate * 1000.0);
+        double next_time = arrivalTime + interarrival;
         Event* nextArrival = new Event(next_time, EventType::ARRIVAL, nullptr, event->node_id, ts);
         scheduleEvent(nextArrival);
     }
 }
 
-// Handle departure events
 void SimulationEngine::handleDeparture(Event* event)
 {
+    double departureTime = event->event_time;
+
     Node* node = getNodeById(event->node_id);
     if (!node) return;
 
+    // Dequeue the departing packet
     Packet* departed = node->dequeuePacket();
     if (departed) {
         NodeStats& stats = nodeStatsMap[node->id];
 
-        double delay = current_time - departed->arrival_time;
+        // Calculate delay as departure_time - arrival_time
+        double delay = departureTime - departed->arrival_time;
         stats.totalDelay += delay;
         stats.totalDepartures++;
         stats.packetsOut++;
 
-        // Per-queue delay if you want breakdown
+        // Per-queue delay stats
         switch (departed->priority) {
             case Priority::PREMIUM:
                 stats.premiumDelaySum += delay;
@@ -277,7 +280,7 @@ void SimulationEngine::handleDeparture(Event* event)
             default:
                 break;
         }
-
+        
         if (departed->is_reference) {
             referenceStats.totalReferenceDelay += delay;
             referenceStats.totalReferenceDepartures++;
@@ -285,15 +288,12 @@ void SimulationEngine::handleDeparture(Event* event)
 
         delete departed;
     }
-
-    // If more packets remain, schedule next departure
+    
     Packet* nextPkt = node->peekPacket();
     if (nextPkt) {
         double transmission_time = (nextPkt->size * 8.0) / node->transmission_rate;
-        double nextDepTime = current_time + transmission_time;
-        if (nextDepTime < end_time) {
-            Event* nextDep = new Event(nextDepTime, EventType::DEPARTURE, nullptr, node->id);
-            scheduleEvent(nextDep);
-        }
+        double nextDepTime = departureTime + transmission_time;
+        Event* nextDep = new Event(nextDepTime, EventType::DEPARTURE, nullptr, node->id);
+        scheduleEvent(nextDep);
     }
 }

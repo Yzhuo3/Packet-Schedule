@@ -21,8 +21,6 @@ void printProgressBar(int progress, int barWidth)
 
 void writeDetailedReport(SimulationEngine &engine, const std::string &date)
 {
-    // Build the path to the final text file
-    // e.g. "../output/20250321_145004/Scenario_2_output_0.9.txt"
     std::string fullpath = "../output/" + date + "/" + engine.outputFilename;
 
     std::ofstream out(fullpath);
@@ -31,11 +29,11 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
         return;
     }
 
-    // Print header lines
+    // 1) Basic info about the simulation
     out << "SPQ system\n";
     out << "Number of packets: " << engine.totalGeneratedPackets << "\n";
 
-    // Timestamp
+    // 2) Timestamp
     std::time_t now = std::time(nullptr);
     char buf[32];
 #ifdef _WIN32
@@ -47,19 +45,17 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
     std::strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", tmNow);
 #endif
     out << "Timestamp: " << buf << "\n";
-
+    
     out << std::fixed << std::setprecision(3);
     out << "Time simulation ended at: " << engine.current_time << " seconds\n";
 
-    // Basic scenario info
+    // 4) Scenario info
     out << "Number of nodes: " << engine.numNodes << "\n";
     out << "Number of audio sources: " << engine.numAudio << "\n";
     out << "Number of video sources: " << engine.numVideo << "\n";
     out << "Number of data sources: " << engine.numData << "\n";
     out << "Size of SPQ: " << engine.queueSize << "\n";
 
-    // If your scenario logic picks "refTrafficType" to indicate which queue
-    // reference flows mimic, you can label them accordingly:
     out << "Reference packet type: ";
     switch (engine.referenceType) {
         case TrafficType::AUDIO: out << "Audio-like"; break;
@@ -76,7 +72,8 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
         auto &stats = entry.second;
 
         double nodeAvgDelay = (stats.totalDepartures > 0)
-            ? (stats.totalDelay / stats.totalDepartures) : 0.0;
+            ? (stats.totalDelay / stats.totalDepartures)
+            : 0.0;
 
         out << "Node " << nodeId << " average packet delay: "
             << nodeAvgDelay << " seconds\n";
@@ -145,7 +142,6 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
     out << "Best-effort queue: " << avgBestBack << "\n\n";
 
     // (d) End-to-end reference traffic delay
-    // This is now incremented if (pkt->is_reference == true) in handleDeparture
     double refDelay = 0.0;
     if (engine.referenceStats.totalReferenceDepartures > 0) {
         refDelay = engine.referenceStats.totalReferenceDelay
@@ -155,7 +151,6 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
     out << refDelay << "\n\n";
 
     // (e) Overall packet blocking ratio for reference traffic
-    // Also incremented if (pkt->is_reference) in handleArrival drop logic
     double refBlock = 0.0;
     if (engine.referenceStats.totalReferenceArrivals > 0) {
         refBlock = double(engine.referenceStats.totalReferenceDropped)
@@ -187,11 +182,6 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
     std::cout << "\nDetailed report saved to " << fullpath << "\n";
 }
 
-/**
- * exportStatisticsCSV() - If you want to append each run’s data to a CSV file.
- * The logic is the same: no mention of TrafficType::REFERENCE.
- * We compute reference stats if (pkt->is_reference).
- */
 void exportStatisticsCSV(
     SimulationEngine &engine,
     const std::string &csvFilename,
@@ -205,10 +195,9 @@ void exportStatisticsCSV(
         return;
     }
 
-    // If file is empty, write a header row
+    // If file is empty, write header row
     out.seekp(0, std::ios::end);
     if (out.tellp() == 0) {
-        // Example columns
         out << "Scenario,Load,Node,AvgDelay,PremBlock,AssBlock,BestBlock,RefDelay,RefBlock\n";
     }
 
@@ -251,7 +240,7 @@ void exportStatisticsCSV(
             ? double(stats.droppedBestEffort) / bestArrivals
             : 0.0;
 
-        // Write a row
+        // Write a CSV row
         out << scenarioNumber << ","
             << load << ","
             << nodeId << ","
