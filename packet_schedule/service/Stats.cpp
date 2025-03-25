@@ -92,13 +92,44 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
     out << "\n";
 
     // (b) Average packet blocking ratio
+    for (auto &entry : engine.nodeStatsMap) {
+        int nodeId = entry.first;
+        auto &stats = entry.second;
+
+        // Premium
+        int premArrivals = stats.premiumCount + stats.droppedPremium;
+        double premBlockRatio = (premArrivals > 0)
+            ? double(stats.droppedPremium) / premArrivals
+            : 0.0;
+
+        // Assured
+        int assArrivals = stats.assuredCount + stats.droppedAssured;
+        double assBlockRatio = (assArrivals > 0)
+            ? double(stats.droppedAssured) / assArrivals
+            : 0.0;
+
+        // Best-effort
+        int bestArrivals = stats.bestEffortCount + stats.droppedBestEffort;
+        double bestBlockRatio = (bestArrivals > 0)
+            ? double(stats.droppedBestEffort) / bestArrivals
+            : 0.0;
+
+        out << "Node " << nodeId << ":\n"
+            << " Premium block ratio: " << premBlockRatio << "\n"
+            << " Assured block ratio: " << assBlockRatio << "\n"
+            << " Best-effort block ratio: " << bestBlockRatio << "\n";
+    }
+    out << "\n";
+
+    // -----------
+    // Then show the overall blocking ratio (existing code)
+    // -----------
     double totalPremDropped = 0.0, totalPremArrivals = 0.0;
     double totalAssDropped  = 0.0, totalAssArrivals  = 0.0;
     double totalBestDropped = 0.0, totalBestArrivals = 0.0;
 
     for (auto &entry : engine.nodeStatsMap) {
         auto &stats = entry.second;
-
         totalPremDropped  += stats.droppedPremium;
         totalPremArrivals += (stats.premiumCount + stats.droppedPremium);
 
@@ -109,19 +140,40 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
         totalBestArrivals += (stats.bestEffortCount + stats.droppedBestEffort);
     }
 
-    double premiumBlockRatio = (totalPremArrivals > 0.0)
+    double premiumBlockRatioAll = (totalPremArrivals > 0.0)
         ? (totalPremDropped / totalPremArrivals) : 0.0;
-    double assuredBlockRatio = (totalAssArrivals  > 0.0)
+    double assuredBlockRatioAll = (totalAssArrivals  > 0.0)
         ? (totalAssDropped  / totalAssArrivals ) : 0.0;
-    double bestBlockRatio    = (totalBestArrivals > 0.0)
+    double bestBlockRatioAll    = (totalBestArrivals > 0.0)
         ? (totalBestDropped / totalBestArrivals) : 0.0;
 
-    out << "(b) Average packet blocking ratio at each priority queue\n";
-    out << "Premium queue: "   << premiumBlockRatio << "\n";
-    out << "Assured queue: "   << assuredBlockRatio << "\n";
-    out << "Best-effort queue: " << bestBlockRatio << "\n\n";
+    out << "Overall (all nodes) blocking ratio:\n"
+        << " Premium queue: "   << premiumBlockRatioAll << "\n"
+        << " Assured queue: "   << assuredBlockRatioAll << "\n"
+        << " Best-effort queue: " << bestBlockRatioAll << "\n\n";
 
     // (c) Average backlog
+    out << "(c) Average number of backlogged packets at each priority queue (per node)\n";
+    for (auto &entry : engine.nodeStatsMap) {
+        int nodeId = entry.first;
+        auto &stats = entry.second;
+
+        // If no backlogSamples, can't compute average
+        double avgPrem = 0.0, avgAss = 0.0, avgBest = 0.0;
+        if (stats.backlogSamples > 0) {
+            avgPrem = stats.cumulativeBacklogPremium / stats.backlogSamples;
+            avgAss  = stats.cumulativeBacklogAssured / stats.backlogSamples;
+            avgBest = stats.cumulativeBacklogBestEffort / stats.backlogSamples;
+        }
+
+        out << "Node " << nodeId << ":\n"
+            << " Premium backlog: " << avgPrem << "\n"
+            << " Assured backlog: " << avgAss << "\n"
+            << " Best-effort backlog: " << avgBest << "\n";
+    }
+    out << "\n";
+    
+    // overall backlog
     double sumPremBack = 0.0, sumAssBack = 0.0, sumBestBack = 0.0;
     int totalSamples = 0;
     for (auto &entry : engine.nodeStatsMap) {
@@ -136,10 +188,10 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
     double avgAssBack  = (totalSamples > 0) ? (sumAssBack  / totalSamples) : 0.0;
     double avgBestBack = (totalSamples > 0) ? (sumBestBack / totalSamples) : 0.0;
 
-    out << "(c) Average number of backlogged packets at each priority queue\n";
-    out << "Premium queue: "    << avgPremBack << "\n";
-    out << "Assured queue: "    << avgAssBack  << "\n";
-    out << "Best-effort queue: " << avgBestBack << "\n\n";
+    out << "Overall (all nodes) average backlog:\n"
+        << " Premium queue: " << avgPremBack << "\n"
+        << " Assured queue: " << avgAssBack  << "\n"
+        << " Best-effort queue: " << avgBestBack << "\n\n";
 
     // (d) End-to-end reference traffic delay
     double refDelay = 0.0;
@@ -180,79 +232,4 @@ void writeDetailedReport(SimulationEngine &engine, const std::string &date)
 
     out.close();
     std::cout << "\nDetailed report saved to " << fullpath << "\n";
-}
-
-void exportStatisticsCSV(
-    SimulationEngine &engine,
-    const std::string &csvFilename,
-    int scenarioNumber,
-    double load
-)
-{
-    std::ofstream out(csvFilename, std::ios::app);
-    if (!out.is_open()) {
-        std::cerr << "Cannot open " << csvFilename << " for CSV output.\n";
-        return;
-    }
-
-    // If file is empty, write header row
-    out.seekp(0, std::ios::end);
-    if (out.tellp() == 0) {
-        out << "Scenario,Load,Node,AvgDelay,PremBlock,AssBlock,BestBlock,RefDelay,RefBlock\n";
-    }
-
-    // referenceStats for entire run
-    double refAvgDelay = 0.0;
-    if (engine.referenceStats.totalReferenceDepartures > 0) {
-        refAvgDelay = engine.referenceStats.totalReferenceDelay /
-                      engine.referenceStats.totalReferenceDepartures;
-    }
-    double refBlock = 0.0;
-    if (engine.referenceStats.totalReferenceArrivals > 0) {
-        refBlock = double(engine.referenceStats.totalReferenceDropped) /
-                   engine.referenceStats.totalReferenceArrivals;
-    }
-
-    // For each node, compute per-queue blocking
-    for (auto &entry : engine.nodeStatsMap) {
-        int nodeId = entry.first;
-        auto &stats = entry.second;
-
-        double avgDelay = (stats.totalDepartures > 0)
-            ? (stats.totalDelay / stats.totalDepartures)
-            : 0.0;
-
-        // Premium block
-        int premArrivals = stats.premiumCount + stats.droppedPremium;
-        double premBlock = (premArrivals > 0)
-            ? double(stats.droppedPremium) / premArrivals
-            : 0.0;
-
-        // Assured block
-        int assArrivals = stats.assuredCount + stats.droppedAssured;
-        double assBlock = (assArrivals > 0)
-            ? double(stats.droppedAssured) / assArrivals
-            : 0.0;
-
-        // Best-effort block
-        int bestArrivals = stats.bestEffortCount + stats.droppedBestEffort;
-        double bestBlock = (bestArrivals > 0)
-            ? double(stats.droppedBestEffort) / bestArrivals
-            : 0.0;
-
-        // Write a CSV row
-        out << scenarioNumber << ","
-            << load << ","
-            << nodeId << ","
-            << avgDelay << ","
-            << premBlock << ","
-            << assBlock << ","
-            << bestBlock << ","
-            << refAvgDelay << ","
-            << refBlock
-            << "\n";
-    }
-
-    out.close();
-    std::cout << "Appended CSV data to " << csvFilename << "\n";
 }

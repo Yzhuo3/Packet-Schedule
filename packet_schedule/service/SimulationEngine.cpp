@@ -179,9 +179,6 @@ void SimulationEngine::run(const std::string &dateString)
 
     // 6) Produce final stats/report
     writeDetailedReport(*this, dateString);
-    
-    // export CSV:
-    // exportStatisticsCSV(*this, "DataSheet.csv", scenarioNumber, load);
 }
 
 // Handle arrival events

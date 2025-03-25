@@ -28,22 +28,4 @@ void printProgressBar(int progress, int barWidth);
  */
 void writeDetailedReport(SimulationEngine &engine, const std::string &date);
 
-/**
- * @brief Export simulation statistics to a CSV file for each scenario.
- * 
- * Typically appends a row or multiple rows to a CSV that tracks
- * metrics like average delay, blocking, etc.
- * 
- * @param engine         Reference to the SimulationEngine (contains stats)
- * @param csvFilename    Path to the CSV file
- * @param scenarioNumber The scenario index
- * @param load           The offered load
- */
-void exportStatisticsCSV(
-    SimulationEngine &engine,
-    const std::string &csvFilename,
-    int scenarioNumber,
-    double load
-);
-
 #endif // STATS_HPP
