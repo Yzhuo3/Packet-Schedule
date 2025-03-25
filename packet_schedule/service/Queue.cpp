@@ -1,17 +1,22 @@
 #include "../include/Queue.hpp"
 
-Queue::Queue() { }
+Queue::Queue()
+{
+}
 
-bool Queue::isEmpty() const {
+bool Queue::isEmpty() const
+{
     return q.empty();
 }
 
-bool Queue::enqueue(Packet* packet) {
+bool Queue::enqueue(Packet* packet)
+{
     q.push(packet);
     return true;
 }
 
-Packet* Queue::dequeue() {
+Packet* Queue::dequeue()
+{
     if (q.empty())
         return nullptr;
     Packet* packet = q.front();
@@ -19,11 +24,13 @@ Packet* Queue::dequeue() {
     return packet;
 }
 
-int Queue::size() const {
+int Queue::size() const
+{
     return static_cast<int>(q.size());
 }
 
-Packet* Queue::peek() const {
+Packet* Queue::peek() const
+{
     if (q.empty())
         return nullptr;
     return q.front();
