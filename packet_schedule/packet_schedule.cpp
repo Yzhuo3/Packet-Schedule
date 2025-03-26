@@ -45,9 +45,9 @@ void runSimulationForLoad(int scenario,
                           int numData)
 {
     // Define the ON/OFF times and peak rates for each traffic type
-    double t_on_a = 0.36, t_off_a = 0.64, r_a = 64.0; // audio
-    double t_on_v = 0.33, t_off_v = 0.73, r_v = 384.0; // video
-    double t_on_d = 0.35, t_off_d = 0.65, r_d = 256.0; // data
+    double t_on_a = 0.36, t_off_a = 0.64, r_a = 64.0;   // audio
+    double t_on_v = 0.33, t_off_v = 0.73, r_v = 384.0;   // video
+    double t_on_d = 0.35, t_off_d = 0.65, r_d = 256.0;   // data
 
     // For the reference flow:
     double t_on_r, t_off_r, r_r;
@@ -80,23 +80,31 @@ void runSimulationForLoad(int scenario,
     // Compute average rates
     double audioRate_bps = averageRate_bps(r_a, t_on_a, t_off_a);
     double videoRate_bps = averageRate_bps(r_v, t_on_v, t_off_v);
-    double dataRate_bps = averageRate_bps(r_d, t_on_d, t_off_d);
-    double refRate_bps = averageRate_bps(r_r, t_on_r, t_off_r);
+    double dataRate_bps  = averageRate_bps(r_d, t_on_d, t_off_d);
+    double refRate_bps   = averageRate_bps(r_r, t_on_r, t_off_r);
 
     // total arrival rate lambda = sum of background + reference
-    double lambda = (numAudio * audioRate_bps)
-        + (numVideo * videoRate_bps)
-        + (numData * dataRate_bps)
-        + (refRate_bps);
+    double baseLambda = (numAudio * audioRate_bps)
+                      + (numVideo * videoRate_bps)
+                      + (numData  * dataRate_bps)
+                      + refRate_bps;
 
-    double actualRho = lambda / TRANSMISSION_RATE;
+    // Compute the base offered
+    double computedBaseRho = baseLambda / TRANSMISSION_RATE;
 
-    std::cout << "\n--- Running Simulation for userOfferedLoad = " << offeredLoad
-        << ", actualRho = " << actualRho
-        << ", M = " << M << ", K = " << combinedCapacity
-        << ", totalPackets = " << totalPackets
-        << ", Reference Traffic = ";
+    // compute scaling factor
+    double scale = offeredLoad / computedBaseRho;
 
+    // Update the source counts
+    numAudio = std::max(1, (int)std::round(numAudio * scale));
+    numVideo = std::max(1, (int)std::round(numVideo * scale));
+    numData  = std::max(1, (int)std::round(numData * scale));
+    
+    std::cout << "\n--- Running Simulation for Offered Load = " << offeredLoad
+              << ", M = " << M << ", K = " << combinedCapacity
+              << ", totalPackets = " << totalPackets
+              << ", Reference Traffic = ";
+    
     switch (refTrafficType)
     {
     case TrafficType::AUDIO: std::cout << "Audio-like";
