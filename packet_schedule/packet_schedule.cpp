@@ -299,10 +299,10 @@ void runScenario6(double loadStart, double loadEnd, double loadIncrement,
     TrafficType refType = TrafficType::DATA;
 
     std::cout <<
-        "\n====== Custom Scenario: Finite Buffer (K=100), M=10, Reference=Data-like, Sources: audio: 45, video: 40, data: 35 ======\n";
+        "\n====== Custom Scenario: Finite Buffer (K=100), M=10, Reference=Data-like, Sources: audio: 7, video: 5, data: 3 ======\n";
     for (double load = loadStart; load <= loadEnd; load += loadIncrement)
     {
-        runSimulationForLoad(6, load, M, combinedCapacity, refType, totalPackets, output, 45, 40, 35);
+        runSimulationForLoad(6, load, M, combinedCapacity, refType, totalPackets, output, 7, 5, 3);
     }
 }
 
