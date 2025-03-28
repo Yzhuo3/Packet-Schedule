@@ -135,6 +135,11 @@ void writeDetailedReport(SimulationEngine& engine, const std::string& date)
             << " Premium block number: " << premArrivals << "\n"
             << " Assured block number: " << assArrivals << "\n"
             << " Best-effort block number: " << bestArrivals << "\n";
+        
+        out << "Node " << nodeId << ":\n"
+            << " Premium block number: " << double(stats.droppedPremium) << "\n"
+            << " Assured block number: " << double(stats.droppedAssured) << "\n"
+            << " Best-effort block number: " << double(stats.droppedBestEffort) << "\n";
     }
     out << "\n";
 
@@ -170,11 +175,15 @@ void writeDetailedReport(SimulationEngine& engine, const std::string& date)
         << " Assured queue: " << assuredBlockRatioAll << "\n"
         << " Best-effort queue: " << bestBlockRatioAll << "\n\n";
 
-
     out << "Overall (all nodes) blocking number:\n"
-        << " Premium queue: " << totalPremArrivals << "\n"
-        << " Assured queue: " << totalAssArrivals << "\n"
-        << " Best-effort queue: " << totalBestArrivals << "\n\n";
+        << " Premium block number: " << totalPremDropped << "\n"
+        << " Assured block number: " << totalAssDropped << "\n"
+        << " Best-effort block number: " << totalBestDropped << "\n";
+    
+    out << "Overall (all nodes) total number:\n"
+        << " Premium queue total: " << totalPremArrivals << "\n"
+        << " Assured queue total: " << totalAssArrivals << "\n"
+        << " Best-effort queue total: " << totalBestArrivals << "\n\n";
 
     // (c) Average backlog
     out << "(c) Average number of backlogged packets at each priority queue (per node)\n";
