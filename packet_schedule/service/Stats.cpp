@@ -48,7 +48,7 @@ void writeDetailedReport(SimulationEngine& engine, const std::string& date)
 #endif
     out << "Timestamp: " << buf << "\n";
 
-    out << std::fixed << std::setprecision(3);
+    out << std::fixed << std::setprecision(4);
     out << "Time simulation ended at: " << engine.current_time << " seconds\n";
 
     // 4) Scenario info
@@ -232,11 +232,11 @@ void writeDetailedReport(SimulationEngine& engine, const std::string& date)
     double refDelay = 0.0;
     if (engine.referenceStats.totalReferenceDepartures > 0)
     {
-        refDelay = engine.referenceStats.totalReferenceDelay
+        refDelay = engine.referenceStats.totalReferenceDelay * 1000
             / engine.referenceStats.totalReferenceDepartures;
     }
-    out << "(d) Average end-to-end packet delay for reference traffic\n";
-    out << refDelay << "\n\n";
+    out << "(d) Average end-to-end packet delay for reference traffic(in milliseconds)\n";
+    out << refDelay << " ms\n\n";
 
     // (e) Overall packet blocking ratio for reference traffic
     double refBlock = 0.0;
