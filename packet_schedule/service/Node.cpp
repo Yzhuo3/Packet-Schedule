@@ -17,18 +17,20 @@ Node::~Node()
 bool Node::enqueuePacket(Packet* packet)
 {
     // Calculate total packets in all queues.
-    int totalSize = premium_queue.size() + assured_queue.size() + best_effort_queue.size();
-    if (totalSize >= combinedCapacity)
-    {
-        return false;
-    }
-    switch (packet->priority)
-    {
+    int perQueueCapacity = combinedCapacity / 3;
+    
+    switch (packet->priority) {
     case Priority::PREMIUM:
+        if (premium_queue.size() >= perQueueCapacity)
+            return false;
         return premium_queue.enqueue(packet);
     case Priority::ASSURED:
+        if (assured_queue.size() >= perQueueCapacity)
+            return false;
         return assured_queue.enqueue(packet);
     case Priority::BEST_EFFORT:
+        if (best_effort_queue.size() >= perQueueCapacity)
+            return false;
         return best_effort_queue.enqueue(packet);
     default:
         return false;

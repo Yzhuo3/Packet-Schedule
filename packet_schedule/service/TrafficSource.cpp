@@ -1,12 +1,13 @@
 #include "../include/TrafficSource.hpp"
 #include <cmath>
-#include <cstdlib>
+#include <random>
 
 // Utility for exponential
 static double exponentialRandom(double mean)
 {
-    double u = (double)rand() / (RAND_MAX + 1.0);
-    return -mean * log(1 - u);
+    static std::mt19937 rng(std::random_device{}());
+    std::exponential_distribution<double> dist(1.0 / mean);
+    return dist(rng);
 }
 
 TrafficSource::TrafficSource(TrafficType type, bool is_reference,
